@@ -11,6 +11,7 @@ struct muxd_info {
   const char* filename_format;
   const char* line_format;
   const char* time_zone;
+  int no_zoneinfo_fix;
 };
 
 #ifdef __cplusplus
