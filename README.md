@@ -36,7 +36,6 @@ Usage:
 # building
 You must have docker installed to build. Tested with `Docker version 19.03.2, build 6a30dfca03`. To build run:
 ```sh
-./generate.sh
 ./build.sh
 ```
 The output will be at `./build/muxd`.
