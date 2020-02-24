@@ -14,13 +14,13 @@ DONE - Collect extra logs based on file regex (readlink on /proc/<pid>/fd/*)
 
  - Make all the pid attach modes
  - Bring in libuv so we can write io on a separate thread/loop
- - Attach to new forked/cloned processes
- - Attach to new spawned processes
+ - Attach to new forked/cloned/popen/spawned processes
  - Option to detect if timestamp exists (or exclude files / processes from timestampping)
- - Can output logs to directory, file, stdout, stderr, or other
+ - Can output logs to single file, stdout, stderr, etc
  - When using single file mode, logs are dumped on process exit, or by some cadence, or number of lines
  - For each log option to execute/pipe to another process stdin (%f for file name, or some convention)
  - Support piping to it (just pipe, or read all children of that process?)
+ - Cleanup output fds
 
 As we walk and attach to pids, we call attach and wait
 we know they're stopped at that point, so now we can loop
