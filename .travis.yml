@@ -1,5 +1,5 @@
 script:
-- ./test.sh
+- ./test/run.sh
 deploy:
   provider: releases
   file: ./build/muxd
