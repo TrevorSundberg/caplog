@@ -358,6 +358,7 @@ EXPORT void muxd_info_init(muxd_info* info) {
 EXPORT void muxd_run(const muxd_info* info) {
   CHECK(info->output_directory);
   CHECK(info->file_regex && *info->file_regex);
+  mkdirp(info->output_directory);
   if (!info->no_zoneinfo_fix) {
     fix_utc_zone();
   }
