@@ -1,0 +1,28 @@
+DONE - Attach to a pid and collect system calls
+DONE - Create build docker image
+DONE - Create a cmake project
+DONE - Command line parsing
+DONE - Pass all command line options into an exported library function
+DONE - Use -- to run a child program (or --child/-c)
+DONE - Syntax that means including children (negative pid)
+DONE - Attach to multiple pids (threads)
+DONE - Collect all logs (stderr, stdout)
+DONE - Option to add a timestamp based on line (default format or custom format)
+DONE - Specify fds to capture for a program (stdout|stderr)
+DONE - Timezone option
+DONE - Collect extra logs based on file regex (readlink on /proc/<pid>/fd/*)
+
+ - Make all the pid attach modes
+ - Bring in libuv so we can write io on a separate thread/loop
+ - Attach to new forked/cloned processes
+ - Attach to new spawned processes
+ - Option to detect if timestamp exists (or exclude files / processes from timestampping)
+ - Can output logs to directory, file, stdout, stderr, or other
+ - When using single file mode, logs are dumped on process exit, or by some cadence, or number of lines
+ - For each log option to execute/pipe to another process stdin (%f for file name, or some convention)
+ - Support piping to it (just pipe, or read all children of that process?)
+
+As we walk and attach to pids, we call attach and wait
+we know they're stopped at that point, so now we can loop
+over children and spawn all the threads the threads will
+resume the processes, so we'll know they work
