@@ -1,4 +1,5 @@
 # muxd
+Because muxd uses ptrace, you must run with elevated priveledges / sudo.
 ```
 Capture stdout/stderr from multiple processes and mux or demux them
 e.g. muxd --outdir=/tmp --pids=1,2,-3 -- ping google.com
