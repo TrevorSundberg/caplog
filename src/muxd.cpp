@@ -61,7 +61,7 @@ static const int kIgnoreFd = -2;
     }                                                                       \
   } while (0)
 
-int wait_for_syscall(pid_t pid) {
+static int wait_for_syscall(pid_t pid) {
   int status;
   while (1) {
     CHECK(ptrace(PTRACE_SYSCALL, pid, 0, 0) == 0);
@@ -71,7 +71,7 @@ int wait_for_syscall(pid_t pid) {
   }
 }
 
-void getdataslow(pid_t pid, long addr, char* str, int len) {
+static void getdataslow(pid_t pid, long addr, char* str, int len) {
   char* laddr;
   int i, j;
   union u {
@@ -94,7 +94,7 @@ void getdataslow(pid_t pid, long addr, char* str, int len) {
   }
 }
 
-void getdata(pid_t pid, int mem_fd, long addr, char* str, int len) {
+static void getdata(pid_t pid, int mem_fd, long addr, char* str, int len) {
   auto count = pread(mem_fd, str, len, addr);
   // For some reason if the child process is made by us (fork/exec) and we
   // attach to it, either via PTRACE_ATTACH from the parent or PTRACE_TRACEME
@@ -106,17 +106,17 @@ void getdata(pid_t pid, int mem_fd, long addr, char* str, int len) {
   getdataslow(pid, addr, str, len);
 }
 
-std::string read_into_string(const std::string& path) {
+static std::string read_into_string(const std::string& path) {
   std::ifstream ifstream(path);
   return std::string((std::istreambuf_iterator<char>(ifstream)),
                      std::istreambuf_iterator<char>());
 }
 
-std::string get_proc_path(pid_t pid, const char* dir) {
+static std::string get_proc_path(pid_t pid, const char* dir) {
   return "/proc/" + std::to_string(pid) + "/" + dir;
 }
 
-void enumerate(pid_t parent, std::vector<pid_t>& pids) {
+static void enumerate(pid_t parent, std::vector<pid_t>& pids) {
   pids.push_back(parent);
 
   std::string task_path = get_proc_path(parent, "task/");
@@ -149,10 +149,10 @@ void enumerate(pid_t parent, std::vector<pid_t>& pids) {
   CHECK(closedir(dir) == 0);
 }
 
-std::string format_now(const char* fmt, const date::time_zone* time_zone,
-                       const std::string& process, pid_t pid,
-                       const std::string& fd_name,
-                       const std::string& line = std::string()) {
+static std::string format_now(const char* fmt, const date::time_zone* time_zone,
+                              const std::string& process, pid_t pid,
+                              const std::string& fd_name,
+                              const std::string& line = std::string()) {
   std::string result = date::format(
       fmt, date::zoned_time{time_zone, std::chrono::system_clock::now()});
   result = std::regex_replace(result, kProcessModifier, process);
@@ -177,20 +177,20 @@ std::string get_process_fd_name(pid_t pid, int fd) {
   }
 }
 
-void rtrim(std::string& s) {
+static void rtrim(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
                        [](int ch) { return !std::isspace(ch); })
               .base(),
           s.end());
 }
 
-std::string get_pid_name(pid_t pid) {
+static std::string get_pid_name(pid_t pid) {
   std::string result = read_into_string(get_proc_path(pid, "comm"));
   rtrim(result);
   return result;
 }
 
-void capture(const muxd_info* info, pid_t pid) {
+static void capture(const muxd_info* info, pid_t pid) {
   const std::string process = get_pid_name(pid);
 
   CHECK(waitpid(pid, nullptr, 0) == pid);
@@ -285,7 +285,7 @@ void capture(const muxd_info* info, pid_t pid) {
   CHECK(close(mem_fd) == 0);
 }
 
-void spawn(const muxd_info* info, char* argv[]) {
+static void spawn(const muxd_info* info, char* argv[]) {
   pid_t child = fork();
   CHECK(child >= 0);
   if (child == 0) {
@@ -300,7 +300,7 @@ void spawn(const muxd_info* info, char* argv[]) {
   }
 }
 
-void attach(const muxd_info* info, pid_t pid) {
+static void attach(const muxd_info* info, pid_t pid) {
   CHECK(ptrace(PTRACE_ATTACH, pid, nullptr, nullptr) == 0);
   capture(info, pid);
   CHECK(ptrace(PTRACE_DETACH, pid, nullptr, nullptr) == 0);
@@ -323,7 +323,7 @@ static void mkdirp(const char* dir) {
   mkdir(tmp, S_IRWXU);
 }
 
-void fix_utc_zone() {
+static void fix_utc_zone() {
   unsigned char utc[] = {
       0x54, 0x5a, 0x69, 0x66, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
