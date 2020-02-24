@@ -1,0 +1,9 @@
+script:
+- ./test.sh
+deploy:
+  provider: releases
+  file: ./build/muxd
+  api_key: $GITHUB_TOKEN
+  skip_cleanup: true
+  on:
+    branch: master
