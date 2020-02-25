@@ -71,7 +71,8 @@ static int wait_for_syscall(pid_t pid) {
   }
 }
 
-static void getdataslow(pid_t pid, long addr, char* str, int len) {
+static void getdataslow(const pid_t pid, const long addr, char* const str,
+                        const int len) {
   char* laddr;
   int i, j;
   union u {
@@ -94,8 +95,9 @@ static void getdataslow(pid_t pid, long addr, char* str, int len) {
   }
 }
 
-static void getdata(pid_t pid, int mem_fd, long addr, char* str, int len) {
-  auto count = pread(mem_fd, str, len, addr);
+static void getdata(const pid_t pid, const int mem_fd, const long addr,
+                    char* const str, const int len) {
+  const ssize_t count = pread(mem_fd, str, len, addr);
   // For some reason if the child process is made by us (fork/exec) and we
   // attach to it, either via PTRACE_ATTACH from the parent or PTRACE_TRACEME
   // from the child, reading from /proc/<pid>/mem always returns EOF (with no
@@ -112,36 +114,37 @@ static std::string read_into_string(const std::string& path) {
                      std::istreambuf_iterator<char>());
 }
 
-static std::string get_proc_path(pid_t pid, const char* dir) {
+static std::string get_proc_path(const pid_t pid, const char* const dir) {
   return "/proc/" + std::to_string(pid) + "/" + dir;
 }
 
-static void enumerate(pid_t parent, std::vector<pid_t>& pids) {
+static void enumerate(const pid_t parent, std::vector<pid_t>& pids) {
   pids.push_back(parent);
 
-  std::string task_path = get_proc_path(parent, "task/");
+  const std::string task_path = get_proc_path(parent, "task/");
 
   // The std::filesystem::directory_iterator segfaults on "/proc/".
-  DIR* dir = opendir(task_path.c_str());
+  DIR* const dir = opendir(task_path.c_str());
   CHECK(dir);
   for (;;) {
-    dirent* ent = readdir(dir);
+    const dirent* const ent = readdir(dir);
     if (!ent) {
       break;
     }
 
     // Check if the entire string is a number (tid).
     char* end = nullptr;
-    pid_t tid = (pid_t)strtoll(ent->d_name, &end, 10);
+    const pid_t tid = (pid_t)strtoll(ent->d_name, &end, 10);
     if (end - ent->d_name == strlen(ent->d_name)) {
-      std::string children_path = task_path + std::to_string(tid) + "/children";
-      std::string children = read_into_string(children_path);
+      const std::string children_path =
+          task_path + std::to_string(tid) + "/children";
+      const std::string children = read_into_string(children_path);
 
       // For each child we find, recursively enumerate their children.
       std::stringstream children_stream(children);
       std::string child_pid;
       while (children_stream >> child_pid) {
-        pid_t child = (pid_t)std::stoll(child_pid);
+        const pid_t child = (pid_t)std::stoll(child_pid);
         enumerate(child, pids);
       }
     }
@@ -149,8 +152,9 @@ static void enumerate(pid_t parent, std::vector<pid_t>& pids) {
   CHECK(closedir(dir) == 0);
 }
 
-static std::string format_now(const char* fmt, const date::time_zone* time_zone,
-                              const std::string& process, pid_t pid,
+static std::string format_now(const char* const fmt,
+                              const date::time_zone* const time_zone,
+                              const std::string& process, const pid_t pid,
                               const std::string& fd_name,
                               const std::string& line = std::string()) {
   std::string result = date::format(
@@ -162,7 +166,7 @@ static std::string format_now(const char* fmt, const date::time_zone* time_zone,
   return result;
 }
 
-std::string get_process_fd_name(pid_t pid, int fd) {
+std::string get_process_fd_name(const pid_t pid, const int fd) {
   if (fd == 1) {
     return kStdout;
   } else if (fd == 2) {
@@ -190,14 +194,13 @@ static std::string get_pid_name(pid_t pid) {
   return result;
 }
 
-static void capture(const muxd_info* info, pid_t pid) {
+static void capture(const muxd_info* const info, const pid_t pid) {
   const std::string process = get_pid_name(pid);
 
   CHECK(waitpid(pid, nullptr, 0) == pid);
   CHECK(ptrace(PTRACE_SETOPTIONS, pid, 0, PTRACE_O_TRACESYSGOOD) == 0);
 
   const int mem_fd = open(get_proc_path(pid, "mem").c_str(), O_RDONLY);
-  CHECK(errno == 0);
   CHECK(mem_fd != -1);
 
   struct fd_data {
@@ -218,12 +221,13 @@ static void capture(const muxd_info* info, pid_t pid) {
   for (;;) {
     CHECK(wait_for_syscall(pid) == 0);
 
-    long orig_rax = ptrace(PTRACE_PEEKUSER, pid, kLongSize * ORIG_RAX, nullptr);
+    const long orig_rax =
+        ptrace(PTRACE_PEEKUSER, pid, kLongSize * ORIG_RAX, nullptr);
     if (orig_rax == SYS_write) {
       user_regs_struct regs;
       CHECK(ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == 0);
-      int fd = (int)regs.rdi;
-      long buff = regs.rsi;
+      const int fd = (int)regs.rdi;
+      const long buff = regs.rsi;
 
       // Wait to exit the syscall.
       CHECK(wait_for_syscall(pid) == 0);
@@ -238,9 +242,10 @@ static void capture(const muxd_info* info, pid_t pid) {
         data.fd_name = get_process_fd_name(pid, fd);
 
         if (std::regex_match(data.fd_name, file_regex)) {
-          std::string log_path = std::string(info->output_directory) + "/" +
-                                 format_now(info->filename_format, time_zone,
-                                            process, pid, data.fd_name);
+          const std::string log_path =
+              std::string(info->output_directory) + "/" +
+              format_now(info->filename_format, time_zone, process, pid,
+                         data.fd_name);
           data.output_fd = open(log_path.c_str(), O_WRONLY | O_CREAT);
           CHECK(data.output_fd != -1);
 
@@ -255,7 +260,7 @@ static void capture(const muxd_info* info, pid_t pid) {
       // Figure out how much was actually written to the output (could differ
       // from count/rdx).
       CHECK(ptrace(PTRACE_GETREGS, pid, nullptr, &regs) == 0);
-      long written = regs.rax;
+      const long written = regs.rax;
 
       buffer.resize(written);
       getdata(pid, mem_fd, buff, buffer.data(), written);
@@ -266,7 +271,7 @@ static void capture(const muxd_info* info, pid_t pid) {
         const char* start = lines.data();
         for (size_t i = 0; i < lines.size(); ++i) {
           if (lines[i] == '\n') {
-            const char* end = lines.data() + i;
+            const char* const end = lines.data() + i;
             const std::string line(start, end);
             start = end + 1;
             const std::string formatted = format_now(
@@ -285,8 +290,8 @@ static void capture(const muxd_info* info, pid_t pid) {
   CHECK(close(mem_fd) == 0);
 }
 
-static void spawn(const muxd_info* info, char* argv[]) {
-  pid_t child = fork();
+static void spawn(const muxd_info* const info, char* argv[]) {
+  const pid_t child = fork();
   CHECK(child >= 0);
   if (child == 0) {
     // Make sure we die if our parent dies.
@@ -300,7 +305,7 @@ static void spawn(const muxd_info* info, char* argv[]) {
   }
 }
 
-static void attach(const muxd_info* info, pid_t pid) {
+static void attach(const muxd_info* const info, const pid_t pid) {
   CHECK(ptrace(PTRACE_ATTACH, pid, nullptr, nullptr) == 0);
   capture(info, pid);
   CHECK(ptrace(PTRACE_DETACH, pid, nullptr, nullptr) == 0);
@@ -309,22 +314,22 @@ static void attach(const muxd_info* info, pid_t pid) {
 static void mkdirp(const char* dir) {
   char tmp[PATH_MAX];
   char* p = nullptr;
-  size_t len;
+  size_t len = strlen(tmp);
 
   snprintf(tmp, sizeof(tmp), "%s", dir);
-  len = strlen(tmp);
   if (tmp[len - 1] == '/') tmp[len - 1] = 0;
-  for (p = tmp + 1; *p; p++)
+  for (p = tmp + 1; *p; ++p) {
     if (*p == '/') {
       *p = 0;
       mkdir(tmp, S_IRWXU);
       *p = '/';
     }
+  }
   mkdir(tmp, S_IRWXU);
 }
 
 static void fix_utc_zone() {
-  unsigned char utc[] = {
+  static const unsigned char utc[] = {
       0x54, 0x5a, 0x69, 0x66, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -335,17 +340,17 @@ static void fix_utc_zone() {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x55, 0x54,
       0x43, 0x00, 0x00, 0x00, 0x0a, 0x55, 0x54, 0x43, 0x30, 0x0a};
-  static const char* path = "/usr/share/zoneinfo/UTC";
+  static const char* const path = "/usr/share/zoneinfo/UTC";
   if (access(path, F_OK) == -1) {
     mkdirp("/usr/share/zoneinfo/");
-    int fd = open(path, O_WRONLY | O_CREAT);
+    const int fd = open(path, O_WRONLY | O_CREAT);
     CHECK(fd != -1);
     CHECK(write(fd, utc, sizeof(utc)) == sizeof(utc));
     CHECK(close(fd) == 0);
   }
 }
 
-EXPORT void muxd_info_init(muxd_info* info) {
+EXPORT void muxd_info_init(muxd_info* const info) {
   memset(info, 0, sizeof(*info));
   info->output_fd = 1;
   info->output_directory = kDefaultOutputDir;
@@ -355,7 +360,7 @@ EXPORT void muxd_info_init(muxd_info* info) {
   info->time_zone = kDefaultTimeZone;
 }
 
-EXPORT void muxd_run(const muxd_info* info) {
+EXPORT void muxd_run(const muxd_info* const info) {
   CHECK(info->output_directory);
   CHECK(info->file_regex && *info->file_regex);
   mkdirp(info->output_directory);
@@ -378,7 +383,7 @@ EXPORT void muxd_run(const muxd_info* info) {
       }
     }
   }
-  for (auto& thread : threads) {
+  for (std::thread& thread : threads) {
     thread.join();
   }
 }
